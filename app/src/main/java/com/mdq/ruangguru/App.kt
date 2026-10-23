@@ -49,7 +49,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-// ================= ENTITAS / TABEL DATABASE =================
+// ================= TABEL DATABASE =================
 
 @Entity(tableName = "kelas")
 data class KelasEntity(
@@ -62,18 +62,7 @@ data class KelasEntity(
     val keterangan: String = ""
 )
 
-@Entity(
-    tableName = "siswa",
-    foreignKeys = [
-        ForeignKey(
-            entity = KelasEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["kelasId"],
-            onDelete = ForeignKey.RESTRICT
-        )
-    ],
-    indices = [Index("nis", unique = true), Index("kelasId")]
-)
+@Entity(tableName = "siswa")
 data class SiswaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val nis: String,
@@ -86,22 +75,7 @@ data class SiswaEntity(
     val catatan: String = ""
 )
 
-@Entity(
-    tableName = "absensi",
-    foreignKeys = [
-        ForeignKey(
-            entity = SiswaEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["siswaId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [
-        Index(value = ["siswaId", "tanggal", "mataPelajaran"], unique = true),
-        Index("kelasId"),
-        Index("tanggal")
-    ]
-)
+@Entity(tableName = "absensi")
 data class AbsensiEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val siswaId: Long,
@@ -112,18 +86,7 @@ data class AbsensiEntity(
     val catatan: String = ""
 )
 
-@Entity(
-    tableName = "komponen_nilai",
-    foreignKeys = [
-        ForeignKey(
-            entity = KelasEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["kelasId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("kelasId")]
-)
+@Entity(tableName = "komponen_nilai")
 data class KomponenNilaiEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val kelasId: Long,
@@ -132,27 +95,7 @@ data class KomponenNilaiEntity(
     val bobotPersen: Double
 )
 
-@Entity(
-    tableName = "nilai_siswa",
-    foreignKeys = [
-        ForeignKey(
-            entity = KomponenNilaiEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["komponenId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = SiswaEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["siswaId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [
-        Index(value = ["komponenId", "siswaId"], unique = true),
-        Index("siswaId")
-    ]
-)
+@Entity(tableName = "nilai_siswa")
 data class NilaiSiswaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val komponenId: Long,
@@ -212,11 +155,8 @@ interface SiswaDao {
     @Query("SELECT * FROM siswa ORDER BY namaLengkap ASC")
     fun getAllSiswa(): Flow<List<SiswaEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSiswa(siswa: SiswaEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertBatch(siswaList: List<SiswaEntity>)
 
     @Delete
     suspend fun deleteSiswa(siswa: SiswaEntity)
@@ -307,25 +247,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "mdq_ruangguru_offline.db"
                 )
-                .addCallback(DatabaseCallback(scope))
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance
-            }
-        }
-
-        private class DatabaseCallback(private val scope: CoroutineScope) : RoomDatabase.Callback() {
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                super.onCreate(db)
-                INSTANCE?.let { database ->
-                    scope.launch(Dispatchers.IO) {
-                        val k1 = KelasEntity(namaKelas = "X RPL 1", tingkat = "10", waliKelas = "Ahmad S.Kom", tahunAjaran = "2024/2025", semester = "Genap")
-                        val idK1 = database.kelasDao().insertKelas(k1)
-                        database.siswaDao().insertSiswa(SiswaEntity(nis = "1001", namaLengkap = "Budi Santoso", jenisKelamin = "L", kelasId = idK1, tahunMasuk = "2024"))
-                        database.siswaDao().insertSiswa(SiswaEntity(nis = "1002", namaLengkap = "Anisa Putri", jenisKelamin = "P", kelasId = idK1, tahunMasuk = "2024"))
-                        database.guruDao().insertGuru(GuruEntity(nama = "Admin Kepala Sekolah", nip = "19780101", role = "ADMIN"))
-                    }
-                }
             }
         }
     }
@@ -367,7 +292,6 @@ class AppRepository(private val db: AppDatabase) {
     val jumlahSiswa = db.siswaDao().getJumlahSiswaAktif()
     val allSiswa = db.siswaDao().getAllSiswa()
     suspend fun insertSiswa(siswa: SiswaEntity) = db.siswaDao().insertSiswa(siswa)
-    suspend fun insertSiswaBatch(list: List<SiswaEntity>) = db.siswaDao().insertBatch(list)
     suspend fun deleteSiswa(siswa: SiswaEntity) = db.siswaDao().deleteSiswa(siswa)
 
     val komposisiKehadiran = db.absensiDao().getKomposisiKehadiran()
@@ -377,12 +301,11 @@ class AppRepository(private val db: AppDatabase) {
     val allJurnal = db.jurnalDao().getAllJurnal()
     val jumlahJurnal = db.jurnalDao().getJumlahJurnal()
     suspend fun insertJurnal(jurnal: JurnalEntity) = db.jurnalDao().insertJurnal(jurnal)
-
     suspend fun insertKomponen(komponen: KomponenNilaiEntity) = db.nilaiDao().insertKomponen(komponen)
     suspend fun insertNilai(nilai: NilaiSiswaEntity) = db.nilaiDao().insertNilai(nilai)
 }
 
-// ================= WARNA PASTEL & TEMA =================
+// ================= TEMA WARNA PASTEL =================
 
 val BgCream = Color(0xFFFBF8F2)
 val SidebarSage = Color(0xFFE4EDE4)
@@ -408,14 +331,6 @@ val ColorSakit = Color(0xFFF2BE54)
 val ColorIzin = Color(0xFF71AEEA)
 val ColorAlfa = Color(0xFFE77C6B)
 
-val MDQTypography = Typography(
-    headlineLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = TextDarkBrown),
-    headlineMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDarkBrown),
-    titleMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextDarkBrown),
-    bodyMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 13.sp, color = TextDarkBrown),
-    bodySmall = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 11.sp, color = TextMuted)
-)
-
 @Composable
 fun MDQTheme(content: @Composable () -> Unit) {
     MaterialTheme(
@@ -428,12 +343,11 @@ fun MDQTheme(content: @Composable () -> Unit) {
             onBackground = TextDarkBrown,
             onSurface = TextDarkBrown
         ),
-        typography = MDQTypography,
         content = content
     )
 }
 
-// ================= KOMPONEN UI & GRAFIK =================
+// ================= KOMPONEN UI =================
 
 data class NavItem(val title: String, val icon: ImageVector, val route: String)
 
@@ -446,11 +360,11 @@ fun AppSidebar(
 ) {
     val items = listOf(
         NavItem("Dashboard", Icons.Default.Home, "dashboard"),
-        NavItem("Data Kelas", Icons.Default.MeetingRoom, "kelas"),
+        NavItem("Data Kelas", Icons.Default.List, "kelas"),
         NavItem("Data Siswa", Icons.Default.Person, "siswa"),
-        NavItem("Absensi Siswa", Icons.Default.CheckCircleOutline, "absensi"),
-        NavItem("Nilai & Leger", Icons.Default.Grade, "nilai"),
-        NavItem("Jurnal Mengajar", Icons.Default.MenuBook, "jurnal"),
+        NavItem("Absensi Siswa", Icons.Default.CheckCircle, "absensi"),
+        NavItem("Nilai & Leger", Icons.Default.Star, "nilai"),
+        NavItem("Jurnal Mengajar", Icons.Default.Edit, "jurnal"),
         NavItem("Pengaturan", Icons.Default.Settings, "pengaturan")
     )
 
@@ -545,4 +459,63 @@ fun StatCard(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(title, fontSize = 11.sp, color = TextMuted)
-            Text(value, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextDark
+            Text(value, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextDarkBrown)
+            Text(subtitle, fontSize = 10.sp, color = TextMuted)
+        }
+    }
+}
+
+@Composable
+fun WeeklyBarChart(weeklyCounts: List<Float>, modifier: Modifier = Modifier) {
+    val days = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
+    val barColors = listOf(BannerCoral, StatYellowIcon, StatTealIcon, BannerCoral, StatBlueIcon, Color(0xFFC4B8EB), Color(0xFFE89BB6))
+    val maxVal = (weeklyCounts.maxOrNull() ?: 10f).coerceAtLeast(5f)
+
+    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = modifier) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Grafik Kehadiran & Aktivitas", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Persentase kehadiran per sesi", fontSize = 11.sp, color = TextMuted)
+                }
+                Text("Minggu Ini", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                days.forEachIndexed { i, day ->
+                    val value = weeklyCounts.getOrElse(i) { 0f }
+                    val heightRatio = (value / maxVal).coerceIn(0.1f, 1f)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier.width(16.dp).fillMaxHeight(fraction = heightRatio).background(barColors[i % barColors.size], RoundedCornerShape(8.dp)))
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(day, fontSize = 10.sp, color = TextMuted)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AttendanceDonutChart(hadir: Int, sakit: Int, izin: Int, alfa: Int, modifier: Modifier = Modifier) {
+    val total = (hadir + sakit + izin + alfa).coerceAtLeast(1)
+    val pctHadir = (hadir * 100) / total
+    val sweepHadir = (hadir.toFloat() / total) * 360f
+    val sweepSakit = (sakit.toFloat() / total) * 360f
+    val sweepIzin = (izin.toFloat() / total) * 360f
+    val sweepAlfa = (alfa.toFloat() / total) * 360f
+
+    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = modifier) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Komposisi Kehadiran Siswa", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(100.dp), contentAlignment = Alignment.Center) {
+                    Canvas(modifier = Modifier.size(80.dp)) {
+                        var startAngle = -90f
+                        val stroke = Stroke(width = 20f, cap = StrokeCap.Round)
+                        drawArc(ColorHadir, startAngle, sweepHadir, false, style = stroke)
+                        startAngle += sweepHadir
+                        drawArc(ColorSakit, startAngle, sweepSakit, false, style = stroke)
+                        startAngle += sweepSakit
+                        drawArc(ColorIzi
