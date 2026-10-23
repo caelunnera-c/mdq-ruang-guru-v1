@@ -1,3 +1,4 @@
+
 package com.mdq.ruangguru
 
 import android.app.Application
@@ -518,4 +519,718 @@ fun AttendanceDonutChart(hadir: Int, sakit: Int, izin: Int, alfa: Int, modifier:
                         startAngle += sweepHadir
                         drawArc(ColorSakit, startAngle, sweepSakit, false, style = stroke)
                         startAngle += sweepSakit
-                        drawArc(ColorIzi
+                        drawArc(ColorIzin, startAngle, sweepIzin, false, style = stroke)
+                        startAngle += sweepIzin
+                        drawArc(ColorAlfa, startAngle, sweepAlfa, false, style = stroke)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("${pctHadir}%", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Hadir", fontSize = 9.sp, color = TextMuted)
+                    }
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    LegendItem("Hadir (H)", ColorHadir, "$hadir")
+                    LegendItem("Sakit (S)", ColorSakit, "$sakit")
+                    LegendItem("Izin (I)", ColorIzin, "$izin")
+                    LegendItem("Alfa (A)", ColorAlfa, "$alfa")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LegendItem(label: String, color: Color, count: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(label, fontSize = 11.sp, color = TextDarkBrown)
+        }
+        Text(count, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TextDarkBrown)
+    }
+}
+
+// ================= LAYAR LENGKAP =================
+
+data class DashboardState(
+    val totalSiswa: Int = 0,
+    val totalKelas: Int = 0,
+    val totalJurnal: Int = 0,
+    val totalSesi: Int = 0,
+    val hadirCount: Int = 0,
+    val sakitCount: Int = 0,
+    val izinCount: Int = 0,
+    val alfaCount: Int = 0,
+    val persentaseHadir: Int = 0
+)
+
+@Composable
+fun DashboardScreen(
+    state: DashboardState,
+    semester: String,
+    tahunAjaran: String,
+    onMulaiAbsensi: () -> Unit,
+    onInputNilai: () -> Unit,
+    isTablet: Boolean
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val sampleWeeklyData = listOf(85f, 40f, 25f, 35f, 30f, 15f, 10f)
+
+    LazyColumn(modifier = Modifier.fillMaxSize().background(BgCream).padding(16.dp)) {
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Dashboard", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = TextDarkBrown)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Cari...", fontSize = 11.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted) },
+                    modifier = Modifier.width(180.dp).height(44.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = CardBgWhite, focusedContainerColor = CardBgWhite, unfocusedBorderColor = Color.Transparent, focusedBorderColor = StatTealIcon),
+                    singleLine = true
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        item {
+            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = BannerBgPeach), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text("☀️ $semester • Tahun Ajaran $tahunAjaran", fontSize = 11.sp, color = BannerCoral, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Selamat Mengajar, Bapak/Ibu Guru! ✨", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = TextDarkBrown)
+                    Text("Kelola absensi, rekap nilai siswa, dan jurnal mengajar dengan mudah hari ini.", fontSize = 12.sp, color = TextMuted, modifier = Modifier.padding(vertical = 4.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row {
+                        Button(onClick = onMulaiAbsensi, shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Mulai Absensi", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        OutlinedButton(onClick = onInputNilai, shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.outlinedButtonColors(containerColor = CardBgWhite), border = null) {
+                            Text("Input Nilai", color = TextDarkBrown, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        item {
+            if (isTablet) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatCard("Total Siswa", "${state.totalSiswa}", "Siswa Aktif", Icons.Default.Person, StatTealIcon, StatTealBg, Modifier.weight(1f))
+                    StatCard("Data Kelas", "${state.totalKelas}", "Rombel", Icons.Default.List, StatOrangeIcon, StatOrangeBg, Modifier.weight(1f))
+                    StatCard("Kehadiran", "${state.persentaseHadir}%", "${state.totalSesi} Sesi", Icons.Default.CheckCircle, StatYellowIcon, StatYellowBg, Modifier.weight(1f))
+                    StatCard("Jurnal", "${state.totalJurnal}", "Pertemuan", Icons.Default.Edit, StatBlueIcon, StatBlueBg, Modifier.weight(1f))
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatCard("Total Siswa", "${state.totalSiswa}", "Siswa Aktif", Icons.Default.Person, StatTealIcon, StatTealBg, Modifier.weight(1f))
+                        StatCard("Data Kelas", "${state.totalKelas}", "Rombel", Icons.Default.List, StatOrangeIcon, StatOrangeBg, Modifier.weight(1f))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatCard("Kehadiran", "${state.persentaseHadir}%", "${state.totalSesi} Sesi", Icons.Default.CheckCircle, StatYellowIcon, StatYellowBg, Modifier.weight(1f))
+                        StatCard("Jurnal", "${state.totalJurnal}", "Pertemuan", Icons.Default.Edit, StatBlueIcon, StatBlueBg, Modifier.weight(1f))
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        item {
+            if (isTablet) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    WeeklyBarChart(sampleWeeklyData, Modifier.weight(1.2f))
+                    AttendanceDonutChart(state.hadirCount, state.sakitCount, state.izinCount, state.alfaCount, Modifier.weight(1f))
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    WeeklyBarChart(sampleWeeklyData, Modifier.fillMaxWidth())
+                    AttendanceDonutChart(state.hadirCount, state.sakitCount, state.izinCount, state.alfaCount, Modifier.fillMaxWidth())
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun KelasScreen(
+    kelasList: List<KelasEntity>,
+    onAddKelas: (String, String, String, String, String) -> Unit,
+    onDeleteKelas: (KelasEntity) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var namaKelas by remember { mutableStateOf("") }
+    var waliKelas by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.fillMaxSize().background(BgCream).padding(16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Data Rombel Kelas", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDarkBrown)
+            Button(onClick = { showDialog = true }, shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)) {
+                Text("+ Tambah Kelas", fontSize = 12.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(kelasList) { kelas ->
+                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text(kelas.namaKelas, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("Wali: ${kelas.waliKelas} • Tingkat ${kelas.tingkat}", fontSize = 12.sp, color = TextMuted)
+                        }
+                        IconButton(onClick = { onDeleteKelas(kelas) }) {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = ColorAlfa)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Tambah Kelas Baru") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(value = namaKelas, onValueChange = { namaKelas = it }, label = { Text("Nama Kelas (misal: X RPL 1)") })
+                    OutlinedTextField(value = waliKelas, onValueChange = { waliKelas = it }, label = { Text("Nama Wali Kelas") })
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (namaKelas.isNotBlank()) {
+                        onAddKelas(namaKelas, "10", waliKelas, "2024/2025", "Genap")
+                        namaKelas = ""; waliKelas = ""; showDialog = false
+                    }
+                }, colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)) { Text("Simpan") }
+            },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Batal") } }
+        )
+    }
+}
+
+@Composable
+fun SiswaScreen(
+    siswaList: List<SiswaEntity>,
+    kelasList: List<KelasEntity>,
+    onAddSiswa: (String, String, String, Long, String) -> Unit,
+    onDeleteSiswa: (SiswaEntity) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var nis by remember { mutableStateOf("") }
+    var nama by remember { mutableStateOf("") }
+    var jk by remember { mutableStateOf("L") }
+    val selectedKelasId = kelasList.firstOrNull()?.id ?: 0L
+
+    Column(modifier = Modifier.fillMaxSize().background(BgCream).padding(16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Data Siswa", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDarkBrown)
+            Button(onClick = { showDialog = true }, shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)) {
+                Text("+ Tambah Siswa", fontSize = 12.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(siswaList) { siswa ->
+                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text(siswa.namaLengkap, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("NIS: ${siswa.nis} • JK: ${siswa.jenisKelamin}", fontSize = 12.sp, color = TextMuted)
+                        }
+                        IconButton(onClick = { onDeleteSiswa(siswa) }) {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = ColorAlfa)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Tambah Siswa") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(value = nis, onValueChange = { nis = it }, label = { Text("NIS") })
+                    OutlinedTextField(value = nama, onValueChange = { nama = it }, label = { Text("Nama Siswa") })
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("JK: ")
+                        RadioButton(selected = jk == "L", onClick = { jk = "L" })
+                        Text("L")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        RadioButton(selected = jk == "P", onClick = { jk = "P" })
+                        Text("P")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (nis.isNotBlank() && nama.isNotBlank()) {
+                        onAddSiswa(nis, nama, jk, selectedKelasId, "2024")
+                        nis = ""; nama = ""; showDialog = false
+                    }
+                }, colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)) { Text("Simpan") }
+            },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Batal") } }
+        )
+    }
+}
+
+@Composable
+fun AbsensiScreen(
+    kelasList: List<KelasEntity>,
+    siswaList: List<SiswaEntity>,
+    onSimpanAbsensi: (List<AbsensiEntity>) -> Unit
+) {
+    val context = LocalContext.current
+    val selectedKelasId = kelasList.firstOrNull()?.id ?: 0L
+    val today = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
+    var mapel by remember { mutableStateOf("Pemrograman Dasar") }
+
+    val siswaDiKelas = siswaList.filter { it.kelasId == selectedKelasId }
+    val statusMap = remember { mutableStateMapOf<Long, String>() }
+
+    LaunchedEffect(selectedKelasId, siswaList) {
+        siswaDiKelas.forEach { s -> if (!statusMap.containsKey(s.id)) statusMap[s.id] = "HADIR" }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(BgCream).padding(16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Absensi Harian", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDarkBrown)
+            Button(
+                onClick = {
+                    val list = siswaDiKelas.map { s ->
+                        AbsensiEntity(siswaId = s.id, kelasId = selectedKelasId, tanggal = today, mataPelajaran = mapel, status = statusMap[s.id] ?: "HADIR")
+                    }
+                    onSimpanAbsensi(list)
+                    Toast.makeText(context, "Absensi berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                },
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)
+            ) { Text("Simpan Sesi", fontSize = 12.sp) }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(value = mapel, onValueChange = { mapel = it }, label = { Text("Mata Pelajaran") }, modifier = Modifier.fillMaxWidth())
+        Spacer(modifier = Modifier.height(10.dp))
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(siswaDiKelas) { s ->
+                val cur = statusMap[s.id] ?: "HADIR"
+                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text(s.namaLengkap, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("NIS: ${s.nis}", fontSize = 11.sp, color = TextMuted)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            StatusBadge("H", ColorHadir, cur == "HADIR") { statusMap[s.id] = "HADIR" }
+                            StatusBadge("S", ColorSakit, cur == "SAKIT") { statusMap[s.id] = "SAKIT" }
+                            StatusBadge("I", ColorIzin, cur == "IZIN") { statusMap[s.id] = "IZIN" }
+                            StatusBadge("A", ColorAlfa, cur == "ALFA") { statusMap[s.id] = "ALFA" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StatusBadge(label: String, color: Color, isSelected: Boolean, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = if (isSelected) color else Color(0xFFF1F1F1),
+        modifier = Modifier.size(32.dp).clickable { onClick() }
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(label, color = if (isSelected) Color.White else TextMuted, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+fun NilaiScreen(
+    kelasList: List<KelasEntity>,
+    siswaList: List<SiswaEntity>,
+    onAddKomponen: (Long, String, String, Double) -> Unit,
+    onInputNilai: (Long, Long, Double) -> Unit
+) {
+    val selectedKelasId = kelasList.firstOrNull()?.id ?: 0L
+    val siswaDiKelas = siswaList.filter { it.kelasId == selectedKelasId }
+
+    Column(modifier = Modifier.fillMaxSize().background(BgCream).padding(16.dp)) {
+        Text("Penilaian & Leger Siswa", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDarkBrown)
+        Text("Perhitungan bobot nilai otomatis secara offline", fontSize = 11.sp, color = TextMuted)
+        Spacer(modifier = Modifier.height(14.dp))
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(siswaDiKelas) { s ->
+                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text(s.namaLengkap, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("NIS: ${s.nis}", fontSize = 11.sp, color = TextMuted)
+                        }
+                        Text("88.0 (A)", fontWeight = FontWeight.Bold, color = StatTealIcon, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun JurnalScreen(jurnalList: List<JurnalEntity>, onAddJurnal: (JurnalEntity) -> Unit) {
+    var showDialog by remember { mutableStateOf(false) }
+    var materi by remember { mutableStateOf("") }
+    var refleksi by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.fillMaxSize().background(BgCream).padding(16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Jurnal Mengajar Guru", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDarkBrown)
+            Button(onClick = { showDialog = true }, shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)) {
+                Text("+ Buat Jurnal", fontSize = 12.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(jurnalList) { j ->
+                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(j.materi, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("${j.kelas} • ${j.mataPelajaran} • ${j.tanggal}", fontSize = 11.sp, color = StatTealIcon)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Refleksi: ${j.refleksi}", fontSize = 12.sp, color = TextDarkBrown)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Catat Jurnal Mengajar") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(value = materi, onValueChange = { materi = it }, label = { Text("Materi Pembelajaran") })
+                    OutlinedTextField(value = refleksi, onValueChange = { refleksi = it }, label = { Text("Refleksi / Catatan KBM") })
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (materi.isNotBlank()) {
+                        onAddJurnal(JurnalEntity(tanggal = "2024-05-20", namaGuru = "Admin Guru", kelas = "X RPL 1", mataPelajaran = "Produktif", jamPelajaran = "07:30 - 09:00", materi = materi, tujuan = "Tercapai", kegiatan = "Praktik", refleksi = refleksi))
+                        materi = ""; refleksi = ""; showDialog = false
+                    }
+                }, colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)) { Text("Simpan") }
+            },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Batal") } }
+        )
+    }
+}
+
+@Composable
+fun PengaturanScreen(
+    currentOrientation: String,
+    schoolName: String,
+    semester: String,
+    tahunAjaran: String,
+    onOrientationChange: (String) -> Unit,
+    onSaveSchoolInfo: (String, String, String) -> Unit
+) {
+    val context = LocalContext.current
+    var namaSekolah by remember { mutableStateOf(schoolName) }
+
+    Column(modifier = Modifier.fillMaxSize().background(BgCream).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("Pengaturan Aplikasi", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextDarkBrown)
+
+        Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("Mode Orientasi Layar", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row {
+                    FilterChip(selected = currentOrientation == "AUTO", onClick = { onOrientationChange("AUTO") }, label = { Text("Otomatis") })
+                    Spacer(modifier = Modifier.width(6.dp))
+                    FilterChip(selected = currentOrientation == "PORTRAIT", onClick = { onOrientationChange("PORTRAIT") }, label = { Text("HP Potret") })
+                    Spacer(modifier = Modifier.width(6.dp))
+                    FilterChip(selected = currentOrientation == "LANDSCAPE", onClick = { onOrientationChange("LANDSCAPE") }, label = { Text("Tablet Lanskap") })
+                }
+            }
+        }
+
+        Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = CardBgWhite), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Identitas Sekolah", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                OutlinedTextField(value = namaSekolah, onValueChange = { namaSekolah = it }, label = { Text("Nama Sekolah") }, modifier = Modifier.fillMaxWidth())
+                Button(
+                    onClick = {
+                        onSaveSchoolInfo(namaSekolah, semester, tahunAjaran)
+                        Toast.makeText(context, "Pengaturan berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BannerCoral)
+                ) { Text("Simpan") }
+            }
+        }
+    }
+}
+
+// ================= ENTRY POINT UTAMA =================
+
+class MDQApplication : Application() {
+    val applicationScope = CoroutineScope(SupervisorJob())
+    val database by lazy { AppDatabase.getDatabase(this, applicationScope) }
+    val repository by lazy { AppRepository(database) }
+    val userPreferences by lazy { UserPreferences(this) }
+}
+
+class MainViewModel(
+    private val repository: AppRepository,
+    private val preferences: UserPreferences
+) : ViewModel() {
+
+    val orientationMode = preferences.orientationFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "AUTO")
+    val activeSemester = preferences.semesterFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Semester Genap")
+    val activeTahunAjaran = preferences.tahunAjaranFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "2024/2025")
+    val schoolName = preferences.schoolNameFlow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "MDQ Boarding School")
+
+    val allKelas = repository.allKelas.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val allSiswa = repository.allSiswa.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val allJurnal = repository.allJurnal.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val dashboardState: StateFlow<DashboardState> = combine(
+        repository.jumlahSiswa,
+        repository.jumlahKelas,
+        repository.jumlahJurnal,
+        repository.totalSesiAbsensi,
+        repository.komposisiKehadiran
+    ) { siswa, kelas, jurnal, sesi, komposisi ->
+        var h = 0; var s = 0; var i = 0; var a = 0
+        komposisi.forEach {
+            when (it.status) {
+                "HADIR" -> h += it.count
+                "SAKIT" -> s += it.count
+                "IZIN" -> i += it.count
+                "ALFA" -> a += it.count
+            }
+        }
+        val total = h + s + i + a
+        val persen = if (total > 0) ((h.toDouble() / total) * 100).toInt() else 0
+
+        DashboardState(
+            totalSiswa = siswa,
+            totalKelas = kelas,
+            totalJurnal = jurnal,
+            totalSesi = sesi,
+            hadirCount = h,
+            sakitCount = s,
+            izinCount = i,
+            alfaCount = a,
+            persentaseHadir = persen
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardState())
+
+    fun setOrientation(mode: String) = viewModelScope.launch { preferences.setOrientation(mode) }
+    fun setSchoolInfo(name: String, sem: String, thn: String) = viewModelScope.launch { preferences.setSchoolInfo(name, sem, thn) }
+
+    fun addKelas(nama: String, tingkat: String, wali: String, tahun: String, semester: String) = viewModelScope.launch {
+        repository.insertKelas(KelasEntity(namaKelas = nama, tingkat = tingkat, waliKelas = wali, tahunAjaran = tahun, semester = semester))
+    }
+    fun deleteKelas(kelas: KelasEntity) = viewModelScope.launch { repository.deleteKelas(kelas) }
+
+    fun addSiswa(nis: String, nama: String, jk: String, kelasId: Long, thn: String) = viewModelScope.launch {
+        repository.insertSiswa(SiswaEntity(nis = nis, namaLengkap = nama, jenisKelamin = jk, kelasId = kelasId, tahunMasuk = thn))
+    }
+    fun deleteSiswa(siswa: SiswaEntity) = viewModelScope.launch { repository.deleteSiswa(siswa) }
+
+    fun simpanAbsensi(list: List<AbsensiEntity>) = viewModelScope.launch { repository.simpanAbsensiBatch(list) }
+    fun simpanJurnal(jurnal: JurnalEntity) = viewModelScope.launch { repository.insertJurnal(jurnal) }
+    fun addKomponenNilai(kelasId: Long, mapel: String, nama: String, bobot: Double) = viewModelScope.launch {
+        repository.insertKomponen(KomponenNilaiEntity(kelasId = kelasId, mataPelajaran = mapel, namaKomponen = nama, bobotPersen = bobot))
+    }
+    fun inputNilai(kompId: Long, siswaId: Long, nilai: Double) = viewModelScope.launch {
+        repository.insertNilai(NilaiSiswaEntity(komponenId = kompId, siswaId = siswaId, nilai = nilai))
+    }
+}
+
+class ViewModelFactory(
+    private val repository: AppRepository,
+    private val preferences: UserPreferences
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
+            return MainViewModel(repository, preferences) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+class MainActivity : ComponentActivity() {
+
+    private lateinit var viewModel: MainViewModel
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val app = application as MDQApplication
+        val factory = ViewModelFactory(app.repository, app.userPreferences)
+        viewModel = ViewModelProvider(this, factory)[MainViewModel::class.java]
+
+        setContent {
+            MDQTheme {
+                val orientationMode by viewModel.orientationMode.collectAsState()
+
+                LaunchedEffect(orientationMode) {
+                    requestedOrientation = when (orientationMode) {
+                        "PORTRAIT" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        "LANDSCAPE" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                    }
+                }
+
+                val config = LocalConfiguration.current
+                val isTablet = config.screenWidthDp >= 600
+
+                MainContainer(viewModel = viewModel, isTablet = isTablet)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainContainer(viewModel: MainViewModel, isTablet: Boolean) {
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route ?: "dashboard"
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    val dashboardState by viewModel.dashboardState.collectAsState()
+    val semester by viewModel.activeSemester.collectAsState()
+    val tahunAjaran by viewModel.activeTahunAjaran.collectAsState()
+    val schoolName by viewModel.schoolName.collectAsState()
+    val orientationMode by viewModel.orientationMode.collectAsState()
+
+    val kelasList by viewModel.allKelas.collectAsState()
+    val siswaList by viewModel.allSiswa.collectAsState()
+    val jurnalList by viewModel.allJurnal.collectAsState()
+
+    if (isTablet) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            AppSidebar(
+                currentRoute = currentRoute,
+                onNavigate = { route ->
+                    navController.navigate(route) {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onQuickJournalClick = { navController.navigate("jurnal") }
+            )
+
+            Box(modifier = Modifier.weight(1f)) {
+                NavContent(navController, viewModel, dashboardState, semester, tahunAjaran, schoolName, orientationMode, kelasList, siswaList, jurnalList, true)
+            }
+        }
+    } else {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(modifier = Modifier.width(260.dp)) {
+                    AppSidebar(
+                        currentRoute = currentRoute,
+                        onNavigate = { route ->
+                            scope.launch { drawerState.close() }
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onQuickJournalClick = {
+                            scope.launch { drawerState.close() }
+                            navController.navigate("jurnal")
+                        }
+                    )
+                }
+            }
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("MDQ Ruang Guru") },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        }
+                    )
+                }
+            ) { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    NavContent(navController, viewModel, dashboardState, semester, tahunAjaran, schoolName, orientationMode, kelasList, siswaList, jurnalList, false)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NavContent(
+    navController: androidx.navigation.NavHostController,
+    viewModel: MainViewModel,
+    dashboardState: DashboardState,
+    semester: String,
+    tahunAjaran: String,
+    schoolName: String,
+    orientationMode: String,
+    kelasList: List<KelasEntity>,
+    siswaList: List<SiswaEntity>,
+    jurnalList: List<JurnalEntity>,
+    isTablet: Boolean
+) {
+    NavHost(navController = navController, startDestination = "dashboard") {
+        composable("dashboard") {
+            DashboardScreen(
+                state = dashboardState,
+                semester = semester,
+                tahunAjaran = tahunAjaran,
+                onMulaiAbsensi = { navController.navigate("absensi") },
+                onInputNilai = { navController.navigate("nilai") },
+                isTablet = isTablet
+            )
+        }
+        composable("kelas") {
+            KelasScreen(kelasList, { n, t, w, th, s -> viewModel.addKelas(n, t, w, th, s) }, { viewModel.deleteKelas(it) })
+        }
+        composable("siswa") {
+            SiswaScreen(siswaList, kelasList, { nis, nama, jk, kid, th -> viewModel.addSiswa(nis, nama, jk, kid, th) }, { viewModel.deleteSiswa(it) })
+        }
+        composable("absensi") {
+            AbsensiScreen(kelasList, siswaList) { viewModel.simpanAbsensi(it) }
+        }
+        composable("nilai") {
+            NilaiScreen(kelasList, siswaList, { kid, m, n, b -> viewModel.addKomponenNilai(kid, m, n, b) }, { kid, sid, n -> viewModel.inputNilai(kid, sid, n) })
+        }
+        composable("jurnal") {
+            JurnalScreen(jurnalList) { viewModel.simpanJurnal(it) }
+        }
+        composable("pengaturan") {
+            PengaturanScreen(orientationMode, schoolName, semester, tahunAjaran, { viewModel.setOrientation(it) }, { n, s, t -> viewModel.setSchoolInfo(n, s, t) })
+        }
+    }
+}
